@@ -1,44 +1,52 @@
+import threading
+import random
+import time
 
+class Gasolinera:
+    def __init__(self, num_surtidores):
+        self.num_surtidores = num_surtidores
+        self.surtidores_libres = threading.Semaphore(num_surtidores)
+        self.cola_pago = threading.Condition()
+        self.total_tiempo = 0
+        self.num_coches = 0
 
-"""
-Definir constantes:
-- T como el tiempo máximo de llegada de coches en minutos
-- N como el número de surtidores de combustible
-- TOTAL_COCHES como la cantidad total de coches a simular
+    def repostar(self, coche):
+        tiempo_repostaje = random.randint(5, 10)
+        time.sleep(tiempo_repostaje / 100)  # Convertir a centésimas de segundo
+        print(f"Coche {coche} ha repostado en {tiempo_repostaje} minutos.")
+        self.pagar(coche)
 
-Definir variables:
-- colaCoches como una cola vacía para almacenar los coches en espera
-- surtidores como un arreglo de N surtidores de combustible inicialmente libres
-- tiempoTotal como la suma acumulada de tiempo de espera de todos los coches
-- cochesGenerados como un contador de la cantidad de coches generados
+    def pagar(self, coche):
+        tiempo_pago = 3
+        with self.cola_pago:
+            self.cola_pago.wait()  # Esperar a que sea el turno del coche en la cola de pago
+            time.sleep(tiempo_pago / 100)  # Convertir a centésimas de segundo
+            print(f"Coche {coche} ha pagado en {tiempo_pago} minutos.")
+            self.num_coches += 1
+            if self.num_coches == 50:
+                self.total_tiempo = time.time() - self.total_tiempo
+                self.cola_pago.notify_all()  # Notificar a todos los coches que han pagado
 
-Definir clase Coche:
-- tiempoLlegada como el tiempo en que el coche llega a la gasolinera
-- tiempoRepostaje como el tiempo que el coche tarda en repostar
-- tiempoPago como el tiempo que el coche tarda en realizar el pago
+    def calcular_tiempo_medio(self):
+        return round((self.total_tiempo / 50) * 100, 2)  # Convertir a centésimas de segundo y redondear
 
-Definir función llegadaCoche():
-- Generar un nuevo coche con tiempoLlegada aleatorio entre 0 y T minutos
-- Añadir el coche a la colaCoches
+def llegada_coches(gasolinera):
+    for i in range(1, 51):  # Generar 50 coches
+        tiempo_llegada = random.randint(1, 15)
+        time.sleep(tiempo_llegada)
+        print(f"Coche {i} ha llegado a la gasolinera en {tiempo_llegada} minutos.")
+        gasolinera.surtidores_libres.acquire()
+        gasolinera.total_tiempo += time.time()  # Registrar el tiempo de llegada del coche
+        threading.Thread(target=gasolinera.repostar, args=(i,)).start()
 
-Definir función repostaje(coche):
-- Elegir un surtidor libre o con la menor cantidad de coches en cola
-- Marcar el surtidor como ocupado
-- Esperar tiempoRepostaje aleatorio entre 5 y 10 minutos
-- Marcar el surtidor como libre
+def main():
+    gasolinera = Gasolinera(1)  # Crear gasolinera con 1 surtidor
+    llegada_coches(gasolinera)
 
-Definir función pago(coche):
-- Esperar tiempoPago de 3 minutos
+    # Esperar a que todos los coches hayan terminado
+    while gasolinera.num_coches < 50:
+        pass
 
-Inicio del programa:
-- Generar 50 coches utilizando la función llegadaCoche()
-- Mientras haya coches en la colaCoches o cochesGenerados < TOTAL_COCHES:
-  - Si hay surtidores libres y coches en la colaCoches:
-    - Sacar un coche de la colaCoches
-    - Llamar a la función repostaje(coche) para que el coche reposte en un surtidor
-  - Llamar a la función pago(coche) para que el coche realice el pago después del repostaje
-  - Actualizar el tiempoTotal con el tiempo de espera del coche
-  - Incrementar el contador de cochesGenerados
-- Calcular el tiempo promedio de espera dividiendo el tiempoTotal entre el total de coches generados
-- Mostrar el tiempo promedio de espera en la gasolinera
-"""
+    # Calcular y mostrar el tiempo medio de repostaje y pago
+    tiempo_medio = gasolinera.calcular_tiempo_medio()
+    print(f"Tiempo medio de repostaje y pago: {tiempo_medio} minutos.")
