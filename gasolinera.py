@@ -1,12 +1,12 @@
-import threading
+import multiprocessing
 import random
 import time
 
 class Gasolinera:
     def __init__(self, num_surtidores):
         self.num_surtidores = num_surtidores
-        self.surtidores_libres = threading.Semaphore(num_surtidores)
-        self.cola_pago = threading.Condition()
+        self.surtidores_libres = multiprocessing.Semaphore(num_surtidores)
+        self.cola_pago = multiprocessing.Condition()
         self.total_tiempo = 0
         self.num_coches = 0
 
@@ -37,10 +37,10 @@ def llegada_coches(gasolinera):
         print(f"Coche {i} ha llegado a la gasolinera en {tiempo_llegada} minutos.")
         gasolinera.surtidores_libres.acquire()
         gasolinera.total_tiempo += time.time()  # Registrar el tiempo de llegada del coche
-        threading.Thread(target=gasolinera.repostar, args=(i,)).start()
+        multiprocessing.Process(target=gasolinera.repostar, args=(i,)).start()
 
 def main():
-    gasolinera = Gasolinera(1)  # Crear gasolinera con 1 surtidor
+    gasolinera = Gasolinera(4)  # Crear gasolinera con 1 surtidor
     llegada_coches(gasolinera)
 
     # Esperar a que todos los coches hayan terminado
@@ -50,3 +50,5 @@ def main():
     # Calcular y mostrar el tiempo medio de repostaje y pago
     tiempo_medio = gasolinera.calcular_tiempo_medio()
     print(f"Tiempo medio de repostaje y pago: {tiempo_medio} minutos.")
+
+
